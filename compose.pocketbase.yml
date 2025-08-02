@@ -1,0 +1,43 @@
+services:
+  drawdb:
+    image: node:20-alpine
+    container_name: drawdb
+    ports:
+      - "5173:5173"
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    environment:
+      - VITE_BACKEND_URL=http://localhost:8090/api
+    command: sh -c "corepack enable && corepack prepare pnpm@latest --activate && pnpm install && pnpm run dev -- --host"
+    restart: unless-stopped
+    depends_on:
+      - pocketbase
+
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:latest
+    container_name: drawdb-pocketbase
+    ports:
+      - "8090:8090"
+    volumes:
+      - pocketbase_data:/pb_data
+      - ./pocketbase/migrations:/pb_migrations
+      - ./pocketbase/hooks:/pb_hooks
+    environment:
+      - PB_ENCRYPTION_KEY=your-32-char-encryption-key-here
+    command: >
+      serve --http=0.0.0.0:8090 
+      --dir=/pb_data 
+      --migrationsDir=/pb_migrations 
+      --hooksDir=/pb_hooks
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8090/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  pocketbase_data:

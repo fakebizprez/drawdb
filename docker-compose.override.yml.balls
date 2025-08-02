@@ -1,0 +1,43 @@
+# Override file for local development customizations
+# This file is automatically loaded with docker-compose.development.yml
+
+version: '3.8'
+
+services:
+  drawdb-frontend:
+    # Override with local environment variables if they exist
+    env_file:
+      - .env.development
+      - .env.local  # Optional local overrides
+    volumes:
+      - ./:/var/www/html
+      # Exclude node_modules from host to avoid conflicts
+      - /var/www/html/node_modules
+      # Cache pnpm store for faster installs
+      - pnpm_store:/root/.local/share/pnpm
+
+  drawdb-backend:
+    env_file:
+      - .env.development
+      - .env.local  # Optional local overrides
+    volumes:
+      - ./docker/backend-mock:/app
+      - /app/node_modules
+      # Enable live reload for development
+      - ./docker/backend-mock/server.js:/app/server.js
+
+  postgres:
+    # Expose port for direct database access during development
+    ports:
+      - "5432:5432"
+    volumes:
+      # Add development seed data
+      - ./docker/postgres/dev-seeds:/docker-entrypoint-initdb.d/seeds
+
+  redis:
+    # Expose port for direct Redis access during development
+    ports:
+      - "6379:6379"
+
+volumes:
+  pnpm_store:
